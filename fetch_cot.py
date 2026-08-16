@@ -13,6 +13,8 @@ Rows are keyed by (report_date, contract_code) so re-running is idempotent.
 import argparse
 import datetime as dt
 import json
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -41,9 +43,18 @@ DISAGG_FIELDS = [
 
 def _get(dataset, params):
     url = f"https://publicreporting.cftc.gov/resource/{dataset}.json?{urllib.parse.urlencode(params)}"
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    # The CFTC endpoint occasionally stalls; retry with backoff rather than
+    # failing the whole run on a single slow response.
+    last = None
+    for attempt in range(4):
+        req = urllib.request.Request(url, headers={"Accept": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            last = e
+            time.sleep(3 * (attempt + 1))
+    raise RuntimeError(f"CFTC request failed after retries: {last}")
 
 
 def _int(v):
