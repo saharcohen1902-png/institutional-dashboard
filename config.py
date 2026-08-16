@@ -3,11 +3,14 @@
 import os
 
 # SEC requires a descriptive User-Agent with contact info on every request.
-# Overridable via env var so a public/CI deployment can supply its own contact
-# instead of committing a personal address to the repo.
-SEC_USER_AGENT = os.environ.get(
-    "SEC_USER_AGENT", "Sahar Cohen sahar.cohen@bay.security"
-)
+# Overridable via env var so a public/CI deployment can supply its own contact.
+# Use `or` (not a default arg) so an env var set to an EMPTY string — as happens
+# when a GitHub Actions variable is referenced but never defined — still falls
+# back to a valid contact rather than sending SEC an empty User-Agent (which it
+# blocks). This was why the first cloud run fetched no 13F data.
+SEC_USER_AGENT = (
+    os.environ.get("SEC_USER_AGENT") or "Sahar Cohen sahar.cohen@bay.security"
+).strip()
 
 # How many quarterly report periods to keep (5 = one year of tables + the
 # prior quarter needed to compute the oldest quarter's QoQ change).
