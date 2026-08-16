@@ -7,10 +7,11 @@ on:
     branches: [main]          # deploy on every push to main (incl. the first)
   workflow_dispatch:          # lets you trigger a run manually from the Actions tab
   schedule:
-    - cron: "23 5 * * *"      # daily ~05:23 UTC (after the Friday COT release)
+    # 22:37 UTC daily = ~00:37 (winter) / ~01:37 (summer) at night in Israel.
+    - cron: "37 22 * * *"
 
 permissions:
-  contents: read
+  contents: write             # needed for the nightly heartbeat commit
   pages: write
   id-token: write
 
@@ -45,6 +46,19 @@ jobs:
           # e.g. "Your Name you@example.com". SEC requires a real contact.
           SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
         run: python3 update.py
+
+      # A tiny nightly commit keeps the repo "active" so GitHub never
+      # auto-disables the scheduled run (the 60-day inactivity rule).
+      # [skip ci] stops it from re-triggering this workflow.
+      - name: Heartbeat (keep schedule alive)
+        if: github.event_name == 'schedule'
+        run: |
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > last_run.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add last_run.txt
+          git commit -m "chore: nightly heartbeat [skip ci]" || echo "nothing to commit"
+          git push || echo "push skipped"
 
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
