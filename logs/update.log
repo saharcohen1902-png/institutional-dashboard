@@ -1,0 +1,66 @@
+
+==================================================================
+update run 2026-08-15T11:54:32
+==================================================================
+
+--- 13F (SEC EDGAR) ---
+periods: 2026-06-30, 2026-03-31, 2025-12-31, 2025-09-30, 2025-06-30
+
+BlackRock (blackrock)
+
+The Vanguard Group (vanguard)
+
+State Street (statestreet)
+
+JPMorgan Chase (jpmorgan)
+
+Bank of America (bofa)
+
+Berkshire Hathaway (berkshire)
+
+MetLife (metlife)
+
+done: 0 filing(s) ingested
+
+--- COT (CFTC) ---
+fetched 1134 COT rows since 2025-08-02
+stored: 54 weekly reports, latest 2026-08-11
+
+--- build data.json ---
+wrote /Users/saharcohen/proj/mail/holdings13f/web/data.json (433 KB): 7 institutions, 21 contracts
+
+all stages OK
+
+==================================================================
+update run 2026-08-15T23:23:10
+==================================================================
+
+--- 13F (SEC EDGAR) ---
+periods: 2026-06-30, 2026-03-31, 2025-12-31, 2025-09-30, 2025-06-30
+
+BlackRock (blackrock)
+
+The Vanguard Group (vanguard)
+
+State Street (statestreet)
+
+JPMorgan Chase (jpmorgan)
+
+Bank of America (bofa)
+
+Berkshire Hathaway (berkshire)
+
+MetLife (metlife)
+
+done: 0 filing(s) ingested
+
+--- COT (CFTC) ---
+
+--- enrich market caps ---
+to enrich: 2804 CUSIPs (2657 accumulation, 243 displayed)
+new CUSIPs needing OpenFIGI: 1
+  figi 1/1
+done: 1489 companies with a share count on file
+
+--- build data.json ---
+wrote /Users/saharcohen/proj/mail/holdings13f/web/data.json (833 KB): 7 institutions, 21 contracts, 90 mid-caps, 295 descriptions

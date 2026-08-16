@@ -1,0 +1,62 @@
+name: build-and-deploy
+
+# Runs the data pipeline in the cloud on a schedule and publishes the site to
+# GitHub Pages. Does not depend on any personal machine being on.
+on:
+  push:
+    branches: [main]          # deploy on every push to main (incl. the first)
+  workflow_dispatch:          # lets you trigger a run manually from the Actions tab
+  schedule:
+    - cron: "23 5 * * *"      # daily ~05:23 UTC (after the Friday COT release)
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Persist the SQLite DB between runs so 13F ingest and market-cap
+      # enrichment stay incremental (the DB is never committed to the repo).
+      - name: Restore data cache
+        uses: actions/cache@v4
+        with:
+          path: data
+          key: holdings-db-${{ github.run_id }}
+          restore-keys: |
+            holdings-db-
+
+      - name: Run update pipeline
+        env:
+          # Set this as a repository *variable* (Settings -> Secrets and
+          # variables -> Actions -> Variables) to your real contact string,
+          # e.g. "Your Name you@example.com". SEC requires a real contact.
+          SEC_USER_AGENT: ${{ vars.SEC_USER_AGENT }}
+        run: python3 update.py
+
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

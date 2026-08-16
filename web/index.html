@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מעקב החזקות מוסדיות — 13F ו-COT</title>
+<style>
+:root {
+  color-scheme: light;
+  --page:            #f9f9f7;
+  --surface:         #fcfcfb;
+  --text-primary:    #0b0b0b;
+  --text-secondary:  #52514e;
+  --muted:           #898781;
+  --grid:            #e1e0d9;
+  --baseline:        #c3c2b7;
+  --border:          rgba(11,11,11,0.10);
+  --pos:             #2a78d6;   /* diverging: net long  */
+  --neg:             #e34948;   /* diverging: net short */
+  --mid:             #f0efec;
+  --up:              #006300;   /* delta ↑ */
+  --down:            #d03b3b;   /* delta ↓ */
+  --accent:          #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page:           #0d0d0d;
+    --surface:        #1a1a19;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --muted:          #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --pos:            #3987e5;
+    --neg:            #e66767;
+    --mid:            #383835;
+    --up:             #0ca30c;
+    --down:           #d03b3b;
+    --accent:         #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page:           #0d0d0d;
+  --surface:        #1a1a19;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --muted:          #898781;
+  --grid:           #2c2c2a;
+  --baseline:       #383835;
+  --border:         rgba(255,255,255,0.10);
+  --pos:            #3987e5;
+  --neg:            #e66767;
+  --mid:            #383835;
+  --up:             #0ca30c;
+  --down:           #d03b3b;
+  --accent:         #3987e5;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.wrap { max-width: 1500px; margin: 0 auto; padding: 20px 20px 64px; }
+
+header.top {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  align-items: baseline; justify-content: space-between;
+  padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 18px;
+}
+h1 { font-size: 20px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+.sub { color: var(--text-secondary); font-size: 13px; margin-top: 2px; }
+.stamps { display: flex; gap: 8px; flex-wrap: wrap; }
+.stamp {
+  font-size: 12px; color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 3px 10px; background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+.stamp b { color: var(--text-primary); font-weight: 600; }
+
+nav.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; align-items: center; }
+nav.tabs .grouplabel {
+  font-size: 11px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .06em; margin-inline-start: 10px; margin-inline-end: 2px;
+}
+nav.tabs .grouplabel:first-child { margin-inline-start: 0; }
+button.tab {
+  font: inherit; font-size: 13px; cursor: pointer;
+  background: var(--surface); color: var(--text-secondary);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px;
+}
+button.tab:hover { color: var(--text-primary); border-color: var(--baseline); }
+button.tab[aria-selected="true"] {
+  background: var(--accent); color: #fff; border-color: transparent; font-weight: 600;
+}
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px,1fr)); gap: 10px; margin-bottom: 18px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.tile .k { font-size: 12px; color: var(--text-secondary); }
+.tile .v { font-size: 22px; font-weight: 650; margin-top: 3px; letter-spacing: -0.02em; }
+.tile .d { font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+section.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; margin-bottom: 18px; overflow: hidden;
+}
+section.card > h2 {
+  font-size: 14px; font-weight: 620; margin: 0;
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+}
+section.card > h2 .note { font-size: 12px; color: var(--text-secondary); font-weight: 400; }
+
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 7px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--grid); }
+thead th {
+  position: sticky; top: 0; z-index: 2; background: var(--surface);
+  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: .04em;
+  border-bottom: 1px solid var(--baseline);
+}
+thead tr.qhead th { text-align: center; border-inline-start: 1px solid var(--grid); }
+tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+tbody tr:last-child td { border-bottom: none; }
+td.name { text-align: right; white-space: normal; min-width: 200px; font-weight: 500; }
+td.name .cusip { display: block; font-size: 11px; color: var(--muted); font-weight: 400; }
+td.rank { color: var(--muted); width: 34px; }
+td.qcell { border-inline-start: 1px solid var(--grid); }
+.val { display: block; }
+.pct { display: block; font-size: 11px; color: var(--text-secondary); }
+.up { color: var(--up); }
+.down { color: var(--down); }
+.flat { color: var(--muted); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px; font-weight: 600; border-radius: 5px;
+  padding: 1px 6px; border: 1px solid transparent;
+}
+.badge.new     { color: var(--up);   border-color: color-mix(in srgb, var(--up) 40%, transparent); }
+.badge.added   { color: var(--up);   border-color: color-mix(in srgb, var(--up) 25%, transparent); }
+.badge.trimmed { color: var(--down); border-color: color-mix(in srgb, var(--down) 25%, transparent); }
+.badge.exited  { color: var(--down); border-color: color-mix(in srgb, var(--down) 40%, transparent); }
+.badge.held    { color: var(--muted); border-color: var(--grid); }
+
+.netbar { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.netbar svg { display: block; }
+.spark { display: block; }
+
+.legend {
+  display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+  padding: 9px 14px; font-size: 12px; color: var(--text-secondary);
+  border-top: 1px solid var(--grid);
+}
+.legend .key { display: inline-flex; align-items: center; gap: 5px; }
+.legend .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.filings { font-size: 12px; color: var(--text-secondary); }
+.filings a { color: var(--accent); text-decoration: none; }
+.filings a:hover { text-decoration: underline; }
+
+.tooltip {
+  position: fixed; z-index: 50; pointer-events: none; opacity: 0;
+  transition: opacity .1s; background: var(--surface);
+  border: 1px solid var(--baseline); border-radius: 8px;
+  padding: 7px 10px; font-size: 12px; font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 14px rgba(0,0,0,.16); max-width: 260px;
+}
+.tooltip b { font-weight: 620; }
+.loading { padding: 60px; text-align: center; color: var(--text-secondary); }
+.err { padding: 20px; color: var(--down); }
+
+td.name.clickable { cursor: pointer; }
+td.name.clickable .issuer-link {
+  border-bottom: 1px dotted var(--baseline);
+}
+td.name.clickable:hover .issuer-link { color: var(--accent); border-bottom-color: var(--accent); }
+.info-i {
+  display: inline-block; width: 14px; height: 14px; line-height: 14px;
+  text-align: center; font-size: 10px; font-weight: 700; border-radius: 50%;
+  border: 1px solid var(--baseline); color: var(--muted);
+  margin-inline-start: 5px; vertical-align: middle;
+}
+td.name.clickable:hover .info-i { color: var(--accent); border-color: var(--accent); }
+
+.modal-back {
+  position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.45);
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-back.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--baseline);
+  border-radius: 12px; max-width: 460px; width: 100%; padding: 18px 20px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.3);
+}
+.modal h3 { margin: 0 0 4px; font-size: 17px; }
+.modal .tk { font-size: 12px; color: var(--muted); margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+.modal p { margin: 0 0 12px; color: var(--text-secondary); line-height: 1.6; }
+.modal .close {
+  font: inherit; cursor: pointer; background: var(--accent); color: #fff;
+  border: none; border-radius: 8px; padding: 7px 16px; float: left;
+}
+.modal .disc { font-size: 11px; color: var(--muted); margin: 0; }
+
+/* COT weekly long/short cells */
+.ls { display: grid; grid-template-columns: auto auto; gap: 1px 8px; font-size: 12px; justify-content: end; }
+.ls .lbl { color: var(--muted); font-size: 10px; }
+.mr-head { font-size: 15px; font-weight: 650; }
+.mr-detail { margin: 6px 0; padding-inline-start: 0; list-style: none; }
+.mr-detail li { padding: 4px 0; border-bottom: 1px solid var(--grid); color: var(--text-secondary); }
+.mr-detail li:last-child { border-bottom: none; }
+
+.moves { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0; }
+.movecol { padding: 12px 14px; border-inline-start: 1px solid var(--grid); }
+.movecol:first-child { border-inline-start: none; }
+.movecol h4 { margin: 0 0 8px; font-size: 12px; font-weight: 650; }
+ul.mv { list-style: none; margin: 0; padding: 0; }
+ul.mv li { display: flex; justify-content: space-between; gap: 8px; align-items: baseline;
+  padding: 5px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+ul.mv li:last-child { border-bottom: none; }
+ul.mv li.clickable { cursor: pointer; }
+ul.mv li.clickable:hover .mv-name { color: var(--accent); }
+.mv-name { font-weight: 500; }
+.mv-val { text-align: left; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mv-val small { display: block; font-size: 10px; color: var(--muted); font-weight: 400; }
+.mv-empty { color: var(--muted); }
+
+section.card.ai-buy { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+.ai-tag { font-size: 11px; font-weight: 600; color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 6px; padding: 1px 7px; margin-inline-start: 6px; }
+
+.ai-companies { padding: 6px 10px 12px; }
+details.ai-co { border: 1px solid var(--grid); border-radius: 8px; margin-top: 8px; overflow: hidden; }
+details.ai-co > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline;
+  gap: 10px; padding: 9px 12px; background: color-mix(in srgb, var(--accent) 4%, transparent); }
+details.ai-co > summary::-webkit-details-marker { display: none; }
+details.ai-co > summary::before { content: '▸'; color: var(--muted); font-size: 11px; }
+details.ai-co[open] > summary::before { content: '▾'; }
+.ai-co-name { font-weight: 600; }
+.ai-co-meta { color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+details.ai-co > .scroll { padding: 0 4px; }
+td.aicell { text-align: left; padding: 6px 10px; }
+td.aicell .sh { display: block; font-weight: 500; font-variant-numeric: tabular-nums; }
+td.aicell .vl { display: block; font-size: 11px; color: var(--muted); }
+td.aicell .ch { display: block; font-size: 11px; font-variant-numeric: tabular-nums; }
+.ai-cell-key { font-size: 11px; color: var(--muted); padding: 4px 12px 10px; }
+@media (max-width: 640px) {
+  .wrap { padding: 14px 12px 48px; }
+  th, td { padding: 6px 7px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>מעקב החזקות מוסדיות</h1>
+      <div class="sub">דוחות 13F של ה-SEC · דוח החוזים השבועי (COT) של ה-CFTC</div>
+    </div>
+    <div class="stamps" id="stamps"></div>
+  </header>
+  <nav class="tabs" id="tabs"></nav>
+  <main id="view"><div class="loading">טוען נתונים…</div></main>
+</div>
+<div class="tooltip" id="tip"></div>
+<div class="modal-back" id="modalBack">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3 id="modalTitle"></h3>
+    <div class="tk" id="modalTk"></div>
+    <p id="modalBody"></p>
+    <p class="disc">המידע מבוסס על נתוני SEC/OpenFIGI ומוצג לצורכי מידע בלבד — אינו ייעוץ השקעות.</p>
+    <button class="close" id="modalClose">סגור</button>
+    <div style="clear:both"></div>
+  </div>
+</div>
+
+<script>
+const NF = new Intl.NumberFormat('he-IL');
+const tip = document.getElementById('tip');
+
+function money(v) {
+  if (v === null || v === undefined) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e12) return '$' + (v/1e12).toFixed(2) + 'T';
+  if (a >= 1e9)  return '$' + (v/1e9).toFixed(1)  + 'B';
+  if (a >= 1e6)  return '$' + (v/1e6).toFixed(1)  + 'M';
+  if (a >= 1e3)  return '$' + (v/1e3).toFixed(0)  + 'K';
+  return '$' + NF.format(v);
+}
+function signed(v, digits = 1, suffix = '%') {
+  if (v === null || v === undefined) return '—';
+  const s = v > 0 ? '+' : '';
+  return s + v.toFixed(digits) + suffix;
+}
+function cls(v, eps = 0.05) {
+  if (v === null || v === undefined) return 'flat';
+  if (v > eps) return 'up';
+  if (v < -eps) return 'down';
+  return 'flat';
+}
+function heDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.slice(0,10).split('-');
+  return `${d}.${m}.${y}`;
+}
+function quarterLabel(iso) {
+  const [y, m] = iso.split('-');
+  return ({ '03':'Q1', '06':'Q2', '09':'Q3', '12':'Q4' }[m] || m) + ' ' + y;
+}
+const STATUS_HE = { new:'חדש', added:'הגדלה', trimmed:'הקטנה', exited:'יציאה', held:'ללא שינוי' };
+
+/* A holdings name cell that opens the description panel on click. */
+function nameCell(issuer, cusip, sub) {
+  const has = DATA && DATA.descriptions && DATA.descriptions[cusip];
+  const cls = has ? 'name clickable' : 'name';
+  const info = has ? '<span class="info-i">i</span>' : '';
+  return `<td class="${cls}" data-cusip="${cusip}">
+    <span class="issuer-link">${issuer}</span>${info}
+    <span class="cusip">${sub}</span></td>`;
+}
+
+function openDesc(cusip) {
+  const d = DATA.descriptions[cusip];
+  if (!d) return;
+  document.getElementById('modalTitle').textContent = d.title;
+  document.getElementById('modalTk').textContent =
+    (d.ticker ? d.ticker + ' · ' : '') + cusip;
+  document.getElementById('modalBody').textContent = d.blurb;
+  document.getElementById('modalBack').classList.add('open');
+}
+function closeDesc() { document.getElementById('modalBack').classList.remove('open'); }
+
+function showTip(html, ev) {
+  tip.innerHTML = html;
+  tip.style.opacity = '1';
+  const r = tip.getBoundingClientRect();
+  let x = ev.clientX - r.width - 14;
+  if (x < 6) x = ev.clientX + 14;
+  let y = ev.clientY - r.height - 12;
+  if (y < 6) y = ev.clientY + 16;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+function hideTip() { tip.style.opacity = '0'; }
+
+/* ---- dual sparkline: long (blue) and short (red) over 52 weeks ---- */
+function sparkline(series, w = 132, h = 30) {
+  const longs = series.map(s => s.long).reverse();        // oldest → newest
+  const shorts = series.map(s => s.short).reverse();
+  const dates = series.map(s => s.date).reverse();
+  const all = longs.concat(shorts);
+  const lo = Math.min(...all), hi = Math.max(...all);
+  const span = (hi - lo) || 1;
+  const x = i => (i / Math.max(1, longs.length - 1)) * (w - 4) + 2;
+  const y = v => h - 3 - ((v - lo) / span) * (h - 6);
+  const line = (arr, color) => {
+    const pts = arr.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const last = arr[arr.length - 1];
+    return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"
+        stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${x(arr.length-1).toFixed(1)}" cy="${y(last).toFixed(1)}" r="2.5"
+        fill="${color}" stroke="var(--surface)" stroke-width="2"/>`;
+  };
+  const dots = longs.map((v, i) =>
+    `<circle class="sp" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="6"
+       fill="transparent" data-d="${dates[i]}" data-l="${v}" data-s="${shorts[i]}"></circle>`).join('');
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"
+     role="img" aria-label="לונג מול שורט ב-52 השבועות האחרונים">
+    ${line(longs, 'var(--pos)')}
+    ${line(shorts, 'var(--neg)')}
+    ${dots}
+  </svg>`;
+}
+
+/* ---- diverging net-position bar around a zero midpoint ---- */
+function netBar(v, max, w = 84, h = 14) {
+  const half = w / 2;
+  const frac = max ? Math.min(1, Math.abs(v) / max) : 0;
+  const len = Math.max(v === 0 ? 0 : 1.5, frac * half);
+  const color = v >= 0 ? 'var(--pos)' : 'var(--neg)';
+  // Bars grow from the centre: long to the right, short to the left.
+  const xPos = v >= 0 ? half : half - len;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <rect x="0" y="${h/2 - 0.5}" width="${w}" height="1" fill="var(--mid)"/>
+    <rect x="${xPos.toFixed(1)}" y="2" width="${len.toFixed(1)}" height="${h-4}"
+      rx="2" fill="${color}"/>
+    <rect x="${half - 0.5}" y="0" width="1" height="${h}" fill="var(--baseline)"/>
+  </svg>`;
+}
+
+/* ------------------------------- views ------------------------------- */
+function institutionView(inst) {
+  const qs = inst.quarters;
+  const latest = qs[0], prev = qs[1];
+  const chg = prev ? (latest.total_value - prev.total_value) / prev.total_value * 100 : null;
+  const derivatives = latest.put_value + latest.call_value;
+
+  const tiles = `
+  <div class="tiles">
+    <div class="tile"><div class="k">שווי תיק (${quarterLabel(latest.period)})</div>
+      <div class="v">${money(latest.total_value)}</div>
+      <div class="d ${cls(chg)}">${signed(chg)} מהרבעון הקודם</div></div>
+    <div class="tile"><div class="k">מספר פוזיציות</div>
+      <div class="v">${NF.format(latest.positions)}</div>
+      <div class="d flat">${prev ? signed(latest.positions - prev.positions, 0, '') + ' לעומת רבעון קודם' : ''}</div></div>
+    <div class="tile"><div class="k">משקל 10 הגדולות</div>
+      <div class="v">${inst.holdings.slice(0,10).reduce((a,h)=>a+h.pct,0).toFixed(1)}%</div>
+      <div class="d flat">מתוך התיק המדווח</div></div>
+    <div class="tile"><div class="k">נגזרים בדיווח (PUT/CALL)</div>
+      <div class="v">${derivatives ? money(derivatives) : '—'}</div>
+      <div class="d flat">${latest.put_count + latest.call_count} פוזיציות</div></div>
+  </div>`;
+
+  const qhead = inst.periods.map(p => `<th colspan="2">${quarterLabel(p)}</th>`).join('');
+  const qsub = inst.periods.map(() => `<th>שווי · מניות</th><th>% מהתיק</th>`).join('');
+
+  const rows = inst.holdings.map(h => {
+    const cells = h.series.map(s => `
+      <td class="qcell"><span class="val">${money(s.value)}</span><span class="pct">${fmtShares(s.shares)} מניות</span></td>
+      <td><span class="pct">${s.pct === null ? '—' : s.pct.toFixed(2) + '%'}</span></td>`).join('');
+    const s0 = h.series[0];
+    return `<tr>
+      <td class="rank">${h.rank}</td>
+      ${nameCell(h.issuer, h.cusip, `${h.cusip} · ${h.title_class || ''}`)}
+      ${cells}
+      <td class="qcell ${cls(s0.share_change_pct)}">${signed(s0.share_change_pct)}</td>
+      <td><span class="badge ${s0.status}">${STATUS_HE[s0.status] || ''}</span></td>
+    </tr>`;
+  }).join('');
+
+  const summaryRows = qs.map((q, i) => {
+    const p = qs[i+1];
+    const d = p ? (q.total_value - p.total_value) / p.total_value * 100 : null;
+    return `<tr>
+      <td class="name">${quarterLabel(q.period)}</td>
+      <td>${money(q.total_value)}</td>
+      <td class="${cls(d)}">${signed(d)}</td>
+      <td>${NF.format(q.positions)}</td>
+      <td>${q.call_count ? money(q.call_value) : '—'}</td>
+      <td>${q.put_count ? money(q.put_value) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const filings = inst.filings.filter(f => f.report_date === latest.period).map(f =>
+    `<a href="https://www.sec.gov/Archives/edgar/data/${f.cik}/${f.accession.replace(/-/g,'')}/"
+        target="_blank" rel="noopener">${f.form}</a> · הוגש ${heDate(f.filing_date)}`
+  ).join(' &nbsp;|&nbsp; ');
+
+  const ch = inst.changes;
+  const moveList = (rows, kind) => rows.length ? rows.map(r => {
+    const cusip = r.cusip;
+    const has = DATA.descriptions && DATA.descriptions[cusip];
+    const val = kind === 'new' ? money(r.value)
+      : kind === 'exit' ? '−' + money(r.prev_value)
+      : (r.delta_value >= 0 ? '+' : '−') + money(Math.abs(r.delta_value));
+    const sub = kind === 'add' || kind === 'trim'
+      ? `${r.delta_shares >= 0 ? '+' : '−'}${fmtShares(Math.abs(r.delta_shares))} מניות · ${signed(r.pct)}`
+      : `${fmtShares(r.shares)} מניות`;
+    const vc = kind === 'exit' || kind === 'trim' ? 'down' : 'up';
+    return `<li class="${has ? 'clickable' : ''}" data-cusip="${cusip}">
+      <span class="mv-name">${r.issuer}${has ? ' <span class="info-i">i</span>' : ''}</span>
+      <span class="mv-val ${vc}">${val}<small>${sub}</small></span></li>`;
+  }).join('') : '<li class="mv-empty">—</li>';
+  const changesSection = ch ? `
+  <section class="card">
+    <h2>קניות ומכירות ברבעון האחרון
+      <span class="note">${quarterLabel(inst.periods[1])} → ${quarterLabel(inst.periods[0])} · ${ch.new_buys_total} פוזיציות חדשות, ${ch.exits_total} יציאות</span></h2>
+    <div class="moves">
+      <div class="movecol"><h4 class="up">פוזיציות חדשות</h4><ul class="mv">${moveList(ch.new_buys,'new')}</ul></div>
+      <div class="movecol"><h4 class="up">הגדלות בולטות</h4><ul class="mv">${moveList(ch.adds,'add')}</ul></div>
+      <div class="movecol"><h4 class="down">הקטנות בולטות</h4><ul class="mv">${moveList(ch.trims,'trim')}</ul></div>
+      <div class="movecol"><h4 class="down">יציאות מלאות</h4><ul class="mv">${moveList(ch.exits,'exit')}</ul></div>
+    </div>
+  </section>` : '';
+
+  const idx = inst.index_holdings || [];
+  const idxQhead = inst.periods.map(p => `<th>${quarterLabel(p)}</th>`).join('');
+  const idxRows = idx.map(h => {
+    const cells = h.series.map(s => `<td class="qcell"><span class="val">${money(s.value)}</span><span class="pct">${fmtShares(s.shares)} מ׳</span></td>`).join('');
+    return `<tr>
+      ${nameCell(h.issuer, h.cusip, h.cusip)}
+      <td><span class="val">${money(h.value)}</span><span class="pct">${fmtShares(h.shares)} מניות</span></td>
+      <td>${h.pct.toFixed(2)}%</td>
+      ${cells}
+      <td class="${cls(h.share_change_pct)}">${signed(h.share_change_pct)}</td>
+    </tr>`;
+  }).join('');
+  const indexSection = idx.length ? `
+  <section class="card">
+    <h2>החזקות במדדי שוק
+      <span class="note">קרנות סל / קרנות מדד רחבות (S&P 500, נאסד"ק, ראסל, דאו) · ${money(inst.index_total)} · ${inst.index_pct.toFixed(1)}% מהתיק</span></h2>
+    <div class="scroll"><table>
+      <thead>
+        <tr class="qhead"><th rowspan="2" style="text-align:right">מכשיר מדד</th>
+          <th rowspan="2">שווי אחרון</th><th rowspan="2">% מהתיק</th>
+          <th colspan="${inst.periods.length}">שווי לפי רבעון</th><th rowspan="2">Δ מניות</th></tr>
+        <tr class="qhead">${idxQhead}</tr>
+      </thead>
+      <tbody>${idxRows}</tbody>
+    </table></div>
+  </section>` : '';
+
+  return `
+  ${tiles}
+  <section class="card">
+    <h2>סיכום רבעוני <span class="note">שנה אחורה</span></h2>
+    <div class="scroll"><table>
+      <thead><tr><th style="text-align:right">רבעון</th><th>שווי תיק</th><th>שינוי</th>
+        <th>פוזיציות</th><th>אופציות CALL</th><th>אופציות PUT</th></tr></thead>
+      <tbody>${summaryRows}</tbody>
+    </table></div>
+  </section>
+  <section class="card">
+    <h2>${inst.holdings.length} ההחזקות הגדולות ביותר
+      <span class="note">מדורג לפי ${quarterLabel(latest.period)} · שווי בדולרים כפי שדווח ב-13F</span></h2>
+    <div class="scroll"><table>
+      <thead>
+        <tr class="qhead"><th rowspan="2"></th><th rowspan="2" style="text-align:right">נייר ערך</th>
+          ${qhead}<th colspan="2">שינוי אחרון</th></tr>
+        <tr class="qhead">${qsub}<th>מניות</th><th>מגמה</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div class="legend">
+      <span class="key"><span class="badge new">חדש</span> פוזיציה חדשה</span>
+      <span class="key"><span class="badge added">הגדלה</span> הוספת מניות</span>
+      <span class="key"><span class="badge trimmed">הקטנה</span> מכירה חלקית</span>
+      <span class="key"><span class="badge held">ללא שינוי</span> כמות זהה</span>
+      <span class="key filings">דיווחים: ${filings || '—'}</span>
+    </div>
+  </section>
+  ${changesSection}
+  ${indexSection}`;
+}
+
+function cotView(cot) {
+  const groups = [];
+  cot.contracts.forEach(c => {
+    let g = groups.find(x => x.name === c.group);
+    if (!g) { g = { name: c.group, items: [] }; groups.push(g); }
+    g.items.push(c);
+  });
+
+  const cards = groups.map(g => {
+    // Every contract in a group shares the same weekly report dates.
+    const weekDates = (g.items[0].weeks || []).map(w => w.date);
+    const weekHead = weekDates.map((d, i) =>
+      `<th class="qcell">${heDate(d)}${i === 0 ? ' ⌂' : ''}</th>`).join('');
+    const kind = g.items[0].primary_kind;
+    const kindHe = kind === 'asset_manager' ? 'מוסדיים (Asset Manager/Institutional)'
+                                            : 'מנהלי כספים (Managed Money)';
+    const hasHF = g.items.some(c => c.hf_net !== null && c.hf_net !== undefined);
+    const rows = g.items.map(c => {
+      const weekCells = c.weeks.map(w => `
+        <td class="qcell"><div class="ls">
+          <span class="lbl">L</span><span class="${cls(w.long_change,0)}">${NF.format(w.long)} <small>(${w.long_change===null?'':signed(w.long_change,0,'')})</small></span>
+          <span class="lbl">S</span><span class="${cls(w.short_change,0)}">${NF.format(w.short)} <small>(${w.short_change===null?'':signed(w.short_change,0,'')})</small></span>
+        </div></td>`).join('');
+      const hfCell = hasHF ? `<td class="qcell">${c.hf_net===null?'—':`
+        <span class="val ${cls(c.hf_net,0)}">${NF.format(c.hf_net)}</span>
+        <span class="pct ${cls(c.hf_net_change,0)}">${c.hf_net_change===null?'':signed(c.hf_net_change,0,'')}</span>`}</td>` : '';
+      return `<tr>
+        <td class="name">${c.label_he}<span class="cusip">${c.market_name}</span></td>
+        ${weekCells}
+        ${hfCell}
+        <td class="qcell" data-code="${c.code}">${sparkline(c.series)}</td>
+      </tr>`;
+    }).join('');
+    const hfHead = hasHF ? '<th rowspan="2">קרנות גידור (נטו)</th>' : '';
+    return `<section class="card">
+      <h2>${g.name} <span class="note">פוזיציות ${kindHe} · L=לונג S=שורט בכל שבוע · בסוגריים השינוי מהשבוע הקודם${hasHF ? ' · עמודת קרנות גידור להשוואה' : ''}</span></h2>
+      <div class="scroll"><table>
+        <thead>
+          <tr class="qhead"><th rowspan="2" style="text-align:right">חוזה</th>
+            <th colspan="${weekDates.length}">חוזי לונג / שורט — ${kind === 'asset_manager' ? 'מוסדיים' : 'מנהלי כספים'} (⌂ = אחרון)</th>
+            ${hfHead}<th rowspan="2">מוסדיים L↕S 52ש'</th></tr>
+          <tr class="qhead">${weekHead}</tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </section>`;
+  }).join('');
+
+  return `
+  ${marketReadPanel(DATA.market_read)}
+  <div class="tiles">
+    <div class="tile"><div class="k">דוח COT אחרון</div>
+      <div class="v">${heDate(cot.dates[0])}</div>
+      <div class="d flat">נתוני יום שלישי, מתפרסם בשישי</div></div>
+    <div class="tile"><div class="k">חוזים במעקב</div>
+      <div class="v">${cot.contracts.length}</div>
+      <div class="d flat">מדדים, ריבית, סחורות, מט"ח, קריפטו</div></div>
+    <div class="tile"><div class="k">היסטוריה</div>
+      <div class="v">${cot.dates.length}</div>
+      <div class="d flat">דוחות שבועיים שמורים</div></div>
+  </div>
+  <section class="card">
+    <h2>איך לקרוא את הטבלה</h2>
+    <div class="legend" style="border-top:none">
+      <span>המספרים הם פוזיציות ה<b>מוסדיים</b> — קטגוריית «Asset Manager/Institutional»
+        מדוח ה-TFF של ה-CFTC (בדיוק הנתון שביקשת). «לונג» ו«שורט» בכל צד בנפרד,
+        והמספר בסוגריים = השינוי מהשבוע הקודם.</span>
+      <span class="key"><span class="swatch" style="background:var(--pos)"></span> לונג</span>
+      <span class="key"><span class="swatch" style="background:var(--neg)"></span> שורט</span>
+      <span>עמודת «קרנות גידור» = נטו של «Leveraged Funds» להשוואה. בסחורות (זהב/נפט/גז/כסף/נחושת)
+        אין פילוח מוסדי ולכן מוצג «Managed Money» (מנהלי כספים).</span>
+    </div>
+  </section>
+  ${cards}`;
+}
+
+function marketReadPanel(mr) {
+  if (!mr) return '';
+  const items = (mr.details || []).map(d => `<li>${d}</li>`).join('');
+  return `<section class="card" style="border-color:var(--accent)">
+    <h2>סיכום שוק דו-שבועי <span class="note">מבוסס על כל הממשק — חוזי COT (עד ${heDate(mr.based_on)}) + זרימות 13F של המוסדות · מתעדכן אחת לשבועיים</span></h2>
+    <div style="padding:14px">
+      <div class="mr-head">${mr.headline}</div>
+      <ul class="mr-detail">${items}</ul>
+      <div style="margin-top:8px"><b>לאן זה הולך:</b> <span style="color:var(--text-secondary)">${mr.outlook}</span></div>
+      <p class="disc" style="margin-top:10px">קריאה אוטומטית המשקללת את פוזיציות ה<b>מוסדיים</b> בחוזים (TFF Asset Manager) יחד עם זרימות ה-13F של המוסדות בממשק — לצורכי מידע בלבד, אינה ייעוץ או המלצת השקעה.</p>
+    </div>
+  </section>`;
+}
+
+const ONGOING_HE = { accumulating: 'איסוף נמשך', distributing: 'דילול', held: 'התייצב' };
+
+function midcapInstitutionCard(mi) {
+  if (!mi.rows.length) {
+    return `<section class="card">
+      <h2>${mi.name_he} <span class="note">אין חברות בטווח $5–50B עם איסוף שנתי מלא (${mi.candidates} מועמדים נבדקו)</span></h2>
+    </section>`;
+  }
+  const qhead = mi.periods.map(p => `<th class="qcell">${quarterLabel(p)}</th>`).join('');
+  const rows = mi.rows.map((r, i) => {
+    const cells = r.series.map(s =>
+      `<td class="qcell">${s.shares === null ? '—' : NF.format(Math.round(s.shares/1000)) + 'K'}</td>`).join('');
+    const growth = r.year_growth ? '×' + r.year_growth.toFixed(2) : '—';
+    return `<tr>
+      <td class="rank">${i + 1}</td>
+      ${nameCell(r.name || r.ticker || r.cusip, r.cusip, `${r.ticker ? r.ticker + ' · ' : ''}${r.cusip}`)}
+      <td>${money(r.market_cap)}</td>
+      <td class="up"><span class="val">${money(r.accum_value)}</span><span class="pct">+${NF.format(Math.round(r.accum_shares/1e6))}M מניות · ${growth}</span></td>
+      <td>$${NF.format(Math.round(r.price))}</td>
+      ${cells}
+      <td class="${cls(r.last_qoq, 0)}">${signed(r.last_qoq)}</td>
+      <td><span class="badge ${r.ongoing === 'accumulating' ? 'added' : r.ongoing === 'distributing' ? 'trimmed' : 'held'}">${ONGOING_HE[r.ongoing]}</span></td>
+    </tr>`;
+  }).join('');
+  return `<section class="card">
+    <h2>${mi.name_he}
+      <span class="note">${mi.rows.length} מתוך ${mi.matched} · מדורג לפי היקף האיסוף של ${mi.name_he}</span></h2>
+    <div class="scroll"><table>
+      <thead>
+        <tr class="qhead"><th rowspan="2"></th><th rowspan="2" style="text-align:right">חברה</th>
+          <th rowspan="2">שווי שוק</th><th rowspan="2">היקף האיסוף</th><th rowspan="2">מחיר</th>
+          <th colspan="${mi.periods.length}">מניות שהמוסד מחזיק</th>
+          <th rowspan="2">Δ רבעון אחרון</th><th rowspan="2">סטטוס</th></tr>
+        <tr class="qhead">${qhead}</tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </section>`;
+}
+
+function midcapView(mc) {
+  const insts = (mc && mc.institutions) || [];
+  if (!insts.length || !mc.priced) {
+    return `<section class="card"><h2>חברות בשווי בינוני באיסוף</h2>
+      <div class="err" style="color:var(--text-secondary)">
+        הנתונים עדיין בהעשרת שווי שוק. הרץ <code>python3 enrich.py</code> ואז <code>python3 build_site.py</code>.
+      </div></section>`;
+  }
+  const totalMatched = insts.reduce((a, m) => a + m.matched, 0);
+  const withRows = insts.filter(m => m.rows.length);
+  const legend = `<div class="legend">
+      <span class="key"><span class="badge added">איסוף נמשך</span> המשיך לצבור ברבעון האחרון</span>
+      <span class="key"><span class="badge trimmed">דילול</span> התחיל למכור</span>
+      <span class="key"><span class="badge held">התייצב</span> כמות יציבה</span>
+      <span>לחיצה על שם חברה פותחת תיאור קצר · «היקף האיסוף» = מניות שנוספו × מחיר.</span>
+    </div>`;
+  return `
+  <div class="tiles">
+    <div class="tile"><div class="k">מוסדות עם איסוף שווי-בינוני</div>
+      <div class="v">${withRows.length}</div>
+      <div class="d flat">כל טבלה משויכת למוסד עצמו</div></div>
+    <div class="tile"><div class="k">סה"כ התאמות ($5–50B)</div>
+      <div class="v">${NF.format(totalMatched)}</div>
+      <div class="d flat">חברות עם איסוף שנתי מלא, בכל המוסדות</div></div>
+    <div class="tile"><div class="k">מוצג לכל מוסד</div>
+      <div class="v">עד 15</div>
+      <div class="d flat">האיסוף המסיבי ביותר בכל מוסד</div></div>
+  </div>
+  <section class="card"><h2>חברות בשווי בינוני ($5–50 מיליארד) שכל מוסד אוסף — בנפרד
+    <span class="note">כל טבלה מציגה את החברות שאותו מוסד צבר לאורך כל השנה, מדורגות לפי היקף האיסוף בדולרים</span></h2>
+    ${legend}
+  </section>
+  ${insts.map(midcapInstitutionCard).join('')}`;
+}
+
+function consensusView(con) {
+  if (!con || (!con.buys.length && !con.sells.length)) {
+    return `<section class="card"><h2>קונצנזוס מוסדי</h2>
+      <div class="err" style="color:var(--text-secondary)">אין מספיק היסטוריה לחישוב קונצנזוס.</div></section>`;
+  }
+  const N = con.n_institutions;
+  const buyRows = con.buys.map((r, i) => `<tr>
+    <td class="rank">${i + 1}</td>
+    ${nameCell(r.issuer, r.cusip, r.cusip)}
+    <td><b class="up">${r.adders}</b> / ${N}</td>
+    <td class="up"><span class="val">+${money(r.buy_value)}</span><span class="pct">+${fmtShares(r.buy_shares)} מניות</span></td>
+    <td class="${r.reducers ? 'down' : 'flat'}">${r.reducers || '—'}</td>
+  </tr>`).join('');
+  const sellRows = con.sells.map((r, i) => `<tr>
+    <td class="rank">${i + 1}</td>
+    ${nameCell(r.issuer, r.cusip, r.cusip)}
+    <td><b class="down">${r.reducers}</b> / ${N}</td>
+    <td class="down"><span class="val">−${money(r.sell_value)}</span><span class="pct">−${fmtShares(r.sell_shares)} מניות</span></td>
+    <td class="${r.adders ? 'up' : 'flat'}">${r.adders || '—'}</td>
+  </tr>`).join('');
+  return `
+  <div class="tiles">
+    <div class="tile"><div class="k">רבעון מנותח</div>
+      <div class="v">${quarterLabel(con.latest)}</div>
+      <div class="d flat">מול ${quarterLabel(con.prior)}</div></div>
+    <div class="tile"><div class="k">קונצנזוס קנייה מלא</div>
+      <div class="v">${con.buys.filter(b => b.adders === con.n_institutions).length}</div>
+      <div class="d flat">מניות שכל ${con.n_institutions} המוסדות הגדילו</div></div>
+    <div class="tile"><div class="k">מוסדות במעקב</div>
+      <div class="v">${con.n_institutions}</div>
+      <div class="d flat">ספירת המוסדות שזזים יחד</div></div>
+  </div>
+  <section class="card">
+    <h2>קונצנזוס קנייה <span class="note">מניות שהכי הרבה מוסדות הגדילו בו-זמנית — סימן שכנוע · מדורג לפי מספר המוסדות ואז היקף הקנייה</span></h2>
+    <div class="scroll"><table>
+      <thead><tr><th></th><th style="text-align:right">נייר ערך</th>
+        <th>מוסדות שהגדילו</th><th>היקף קנייה מצרפי</th><th>הקטינו</th></tr></thead>
+      <tbody>${buyRows}</tbody>
+    </table></div>
+  </section>
+  <section class="card">
+    <h2>קונצנזוס מכירה <span class="note">מניות שהכי הרבה מוסדות הקטינו או יצאו מהן בו-זמנית</span></h2>
+    <div class="scroll"><table>
+      <thead><tr><th></th><th style="text-align:right">נייר ערך</th>
+        <th>מוסדות שהקטינו</th><th>היקף מכירה מצרפי</th><th>הגדילו</th></tr></thead>
+      <tbody>${sellRows}</tbody>
+    </table></div>
+    <div class="legend"><span>לחיצה על שם נייר פותחת תיאור · «היקף» מוערך לפי מחיר עדכני · פוצל לפי פיצולי מניות (splits).</span></div>
+  </section>`;
+}
+
+function sectorsView(s) {
+  if (!s || !s.aggregate.length) {
+    return `<section class="card"><h2>רוטציה סקטוריאלית</h2>
+      <div class="err" style="color:var(--text-secondary)">אין נתוני סיווג ענפי.</div></section>`;
+  }
+  const maxW = Math.max(...s.aggregate.map(r => Math.abs(r.weight_change)));
+  const aggRows = s.aggregate.map(r => `<tr>
+    <td class="name">${r.label}</td>
+    <td>${money(r.value)}</td>
+    <td>${r.weight.toFixed(1)}%</td>
+    <td><div class="netbar">${netBar(r.weight_change, maxW)}</div></td>
+    <td class="${cls(r.weight_change, 0.03)}">${signed(r.weight_change, 2, 'pp')}</td>
+    <td class="${cls(r.value_change_pct)}">${signed(r.value_change_pct)}</td>
+  </tr>`).join('');
+
+  const instCards = s.institutions.map(mi => {
+    if (!mi.rows.length) return '';
+    const mx = Math.max(...mi.rows.map(r => Math.abs(r.weight_change)));
+    const rows = mi.rows.slice(0, 6).map(r => `<tr>
+      <td class="name">${r.label}</td>
+      <td>${r.weight.toFixed(1)}%</td>
+      <td><div class="netbar">${netBar(r.weight_change, mx)}</div></td>
+      <td class="${cls(r.weight_change, 0.03)}">${signed(r.weight_change, 2, 'pp')}</td>
+    </tr>`).join('');
+    return `<section class="card">
+      <h2>${mi.name_he} <span class="note">כיסוי סיווג: ${mi.coverage.toFixed(0)}% מהתיק</span></h2>
+      <div class="scroll"><table>
+        <thead><tr><th style="text-align:right">ענף</th><th>משקל</th><th>רוטציה</th><th>Δ משקל</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </section>`;
+  }).join('');
+
+  return `
+  <div class="tiles">
+    <div class="tile"><div class="k">רבעון</div>
+      <div class="v">${quarterLabel(s.latest)}</div>
+      <div class="d flat">מול ${quarterLabel(s.prior)}</div></div>
+    <div class="tile"><div class="k">הענף המוביל</div>
+      <div class="v">${s.aggregate[0].label}</div>
+      <div class="d ${cls(s.aggregate[0].weight_change,0.03)}">${signed(s.aggregate[0].weight_change,2,'pp')} משקל</div></div>
+    <div class="tile"><div class="k">כיסוי סיווג</div>
+      <div class="v">${s.coverage.latest.toFixed(0)}%</div>
+      <div class="d flat">מערך התיק סווג לפי ענף (SIC)</div></div>
+  </div>
+  <section class="card">
+    <h2>רוטציה סקטוריאלית — כלל המוסדות
+      <span class="note">משקל כל ענף מהתיק המסווג ושינוי המשקל מהרבעון הקודם (נקודות אחוז) · «רוטציה» = לאן זז הכסף</span></h2>
+    <div class="scroll"><table>
+      <thead><tr><th style="text-align:right">ענף</th><th>שווי מוחזק</th><th>משקל</th>
+        <th>רוטציה</th><th>Δ משקל</th><th>Δ שווי</th></tr></thead>
+      <tbody>${aggRows}</tbody>
+    </table></div>
+    <div class="legend">
+      <span class="key"><span class="swatch" style="background:var(--pos)"></span> הגדלת משקל (כניסה)</span>
+      <span class="key"><span class="swatch" style="background:var(--neg)"></span> הקטנת משקל (יציאה)</span>
+      <span>הרוטציה נמדדת בשינוי המשקל כדי לנטרל עליית/ירידת שוק כללית. הסיווג לפי קוד SIC של ה-SEC, על ${s.coverage.latest.toFixed(0)}% מהתיק.</span>
+    </div>
+  </section>
+  ${instCards}`;
+}
+
+function fmtShares(s) {
+  if (s === null || s === undefined) return '—';
+  const a = Math.abs(s);
+  if (a >= 1e9) return (s / 1e9).toFixed(2) + 'B';
+  if (a >= 1e6) return NF.format(Math.round(s / 1e6)) + 'M';
+  if (a >= 1e3) return NF.format(Math.round(s / 1e3)) + 'K';
+  return NF.format(Math.round(s));
+}
+
+let aiInst = null;
+
+function aiView(ai) {
+  const bi = ai && ai.by_institution;
+  if (!bi || !bi.length) {
+    return `<section class="card"><h2>שרשרת הערך של AI</h2>
+      <div class="err" style="color:var(--text-secondary)">אין נתונים.</div></section>`;
+  }
+  if (!aiInst || !bi.some(b => b.id === aiInst)) aiInst = bi[0].id;
+  const sel = bi.find(b => b.id === aiInst);
+  const qhead = ai.periods.map((p, i) =>
+    `<th class="qcell">${quarterLabel(p)}${i === 0 ? ' ⌂' : ''}</th>`).join('');
+
+  const subnav = bi.map(b =>
+    `<button class="tab" data-aiinst="${b.id}" aria-selected="${b.id === aiInst}">${b.name_he}</button>`
+  ).join('');
+
+  const layerCard = (L) => {
+    const rows = L.rows.map((r, i) => {
+      const cells = r.series.map(s => `<td class="qcell aicell">
+        <span class="sh">${fmtShares(s.shares)}</span>
+        <span class="vl">${s.value ? money(s.value) : ''}</span>
+        <span class="ch ${cls(s.chg, 0)}">${s.chg === null || s.chg === undefined ? '' : signed(s.chg)}</span>
+      </td>`).join('');
+      const accum = r.reason === 'accum'
+        ? ' <span class="badge added" title="נוספה כי המוסד מגדיל אחזקה">איסוף</span>' : '';
+      return `<tr>
+        <td class="rank">${r.reason === 'accum' ? '+' : i + 1}</td>
+        ${nameCell(r.name, r.cusip, r.ticker + accum)}
+        ${cells}
+      </tr>`;
+    }).join('');
+    const tag = L.buying ? '<span class="ai-tag">המוסדות אוספים כאן</span>' : '';
+    return `<section class="card${L.buying ? ' ai-buy' : ''}">
+      <h2>שכבה ${L.n} · ${L.he} ${tag}</h2>
+      <div class="scroll"><table>
+        <thead><tr class="qhead"><th></th><th style="text-align:right">חברה</th>${qhead}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </section>`;
+  };
+
+  const layers = sel.layers.length
+    ? sel.layers.map(layerCard).join('')
+    : `<section class="card"><div class="err" style="color:var(--text-secondary)">
+        ${sel.name_he} כמעט אינו מחזיק בחברות ה-AI האלה.</div></section>`;
+
+  return `
+  <div class="tiles">
+    <div class="tile"><div class="k">מוסד נבחר</div>
+      <div class="v">${sel.name_he}</div>
+      <div class="d flat">5 ההחזקות הגדולות בכל שכבה — של המוסד עצמו</div></div>
+    <div class="tile"><div class="k">שכבות עם החזקה</div>
+      <div class="v">${sel.layers.length}</div>
+      <div class="d flat">מהחשמל ועד השבבים והחומרה</div></div>
+    <div class="tile"><div class="k">מעודכן</div>
+      <div class="v">${quarterLabel(ai.periods[0])}</div>
+      <div class="d flat">מתעדכן בכל דוח 13F חדש</div></div>
+  </div>
+  <nav class="tabs" style="margin-bottom:14px"><span class="grouplabel">בחר מוסד</span>${subnav}</nav>
+  <section class="card"><h2>שרשרת הערך של AI — לפי מוסד
+    <span class="note">בכל שכבה, 5 החברות עם ההחזקה הכי גדולה של ${sel.name_he} עצמו. בכל תא: כמות מניות · שווי · שינוי מהרבעון הקודם (⌂ = רבעון אחרון). לחיצה על שם פותחת תיאור.</span></h2>
+  </section>
+  ${layers}`;
+}
+
+/* ------------------------------- app ------------------------------- */
+let DATA = null;
+const KIND_HE = { asset_manager: 'מנהלי נכסים', bank: 'בנקים', insurer: 'חברות ביטוח' };
+
+function render(key) {
+  const view = document.getElementById('view');
+  document.querySelectorAll('button.tab').forEach(b =>
+    b.setAttribute('aria-selected', String(b.dataset.key === key)));
+  if (key === 'cot') {
+    view.innerHTML = cotView(DATA.cot);
+  } else if (key === 'midcap') {
+    view.innerHTML = midcapView(DATA.midcap);
+  } else if (key === 'consensus') {
+    view.innerHTML = consensusView(DATA.consensus);
+  } else if (key === 'sectors') {
+    view.innerHTML = sectorsView(DATA.sectors);
+  } else if (key === 'ai') {
+    view.innerHTML = aiView(DATA.ai);
+  } else {
+    const inst = DATA.institutions.find(i => i.id === key);
+    view.innerHTML = institutionView(inst);
+  }
+  try { history.replaceState(null, '', '#' + key); } catch (e) { /* file:// */ }
+  window.scrollTo({ top: 0 });
+}
+
+function buildTabs() {
+  const nav = document.getElementById('tabs');
+  let html = '';
+  ['asset_manager', 'bank', 'insurer'].forEach(kind => {
+    const items = DATA.institutions.filter(i => i.kind === kind);
+    if (!items.length) return;
+    html += `<span class="grouplabel">${KIND_HE[kind]}</span>`;
+    html += items.map(i =>
+      `<button class="tab" data-key="${i.id}" role="tab">${i.name_he}</button>`).join('');
+  });
+  html += `<span class="grouplabel">סקר</span>
+           <button class="tab" data-key="ai" role="tab">AI</button>
+           <button class="tab" data-key="consensus" role="tab">קונצנזוס מוסדי</button>
+           <button class="tab" data-key="sectors" role="tab">רוטציה סקטוריאלית</button>
+           <button class="tab" data-key="midcap" role="tab">איסוף שווי בינוני</button>`;
+  html += `<span class="grouplabel">חוזים</span>
+           <button class="tab" data-key="cot" role="tab">דוח COT שבועי</button>`;
+  nav.innerHTML = html;
+  nav.querySelectorAll('button.tab').forEach(b =>
+    b.addEventListener('click', () => render(b.dataset.key)));
+}
+
+function buildStamps() {
+  const m = DATA.meta;
+  document.getElementById('stamps').innerHTML = `
+    <span class="stamp">13F עודכן: <b>${heDate(m['13f_last_run'])}</b></span>
+    <span class="stamp">COT אחרון: <b>${heDate(m['cot_latest_report'])}</b></span>
+    <span class="stamp">נבנה: <b>${heDate(DATA.generated_at)}</b></span>`;
+}
+
+/* One delegated listener covers every sparkline hover target. */
+document.addEventListener('mouseover', ev => {
+  const c = ev.target.closest('circle.sp');
+  if (!c) return;
+  showTip(`<b>${heDate(c.dataset.d)}</b><br>
+    לונג: ${NF.format(Number(c.dataset.l))}<br>
+    שורט: ${NF.format(Number(c.dataset.s))}`, ev);
+});
+document.addEventListener('mouseout', ev => {
+  if (ev.target.closest('circle.sp')) hideTip();
+});
+
+/* Clicking a holdings name cell opens its description. */
+document.addEventListener('click', ev => {
+  const aib = ev.target.closest('[data-aiinst]');
+  if (aib) { aiInst = aib.dataset.aiinst; render('ai'); return; }
+  const info = ev.target.closest('.info-i[data-desccusip]');
+  if (info) { ev.preventDefault(); ev.stopPropagation(); openDesc(info.dataset.desccusip); return; }
+  const cell = ev.target.closest('td.name.clickable, li.clickable[data-cusip]');
+  if (cell && cell.dataset.cusip) { openDesc(cell.dataset.cusip); return; }
+  if (ev.target.id === 'modalBack' || ev.target.id === 'modalClose') closeDesc();
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeDesc(); });
+
+fetch('data.json', { cache: 'no-store' })
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(d => {
+    DATA = d;
+    buildStamps();
+    buildTabs();
+    const hash = location.hash.slice(1);
+    const valid = DATA.institutions.some(i => i.id === hash)
+      || ['cot', 'midcap', 'consensus', 'sectors', 'ai'].includes(hash);
+    render(valid ? hash : DATA.institutions[0].id);
+  })
+  .catch(e => {
+    document.getElementById('view').innerHTML =
+      `<div class="err">שגיאה בטעינת data.json (${e.message}).<br>
+       יש להריץ <code>python3 update.py</code> וללחוץ רענון.</div>`;
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# The SQLite DB is large and rebuilt by the pipeline — never commit it.
+data/
+# Generated each run by build_site.py; GitHub Actions regenerates it.
+web/data.json
+# Python
+__pycache__/
+*.pyc
+.DS_Store

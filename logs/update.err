@@ -1,0 +1,26 @@
+  ? partial overlap 32%: jpmorgan 2026-03-31 0000019617-26-000212 (13F-HR/None) -> kept
+Traceback (most recent call last):
+  File "/Users/saharcohen/proj/mail/holdings13f/fetch_cot.py", line 165, in <module>
+    main()
+  File "/Users/saharcohen/proj/mail/holdings13f/fetch_cot.py", line 91, in main
+    for r in _fetch(TFF_DATASET, TFF_FIELDS, fin_codes, since):
+  File "/Users/saharcohen/proj/mail/holdings13f/fetch_cot.py", line 66, in _fetch
+    page = _get(dataset, {
+  File "/Users/saharcohen/proj/mail/holdings13f/fetch_cot.py", line 46, in _get
+    return json.loads(resp.read().decode("utf-8"))
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 466, in read
+    return self._readall_chunked()
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 576, in _readall_chunked
+    value.append(self._safe_read(chunk_left))
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/http/client.py", line 613, in _safe_read
+    data = self.fp.read(amt)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/socket.py", line 704, in readinto
+    return self._sock.recv_into(b)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1241, in recv_into
+    return self.read(nbytes, buffer)
+  File "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/ssl.py", line 1099, in read
+    return self._sslobj.read(len, buffer)
+socket.timeout: The read operation timed out
+!!! COT (CFTC) failed (exit 1)
+
+completed with failures: COT (CFTC)
